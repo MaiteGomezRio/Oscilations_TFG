@@ -8,7 +8,7 @@ from collections import Counter
 from processing.corrector import correct_oscillations
 from utils.io_utils import convert_mzxml_2_mzml
 from validation.signal_validator import validate_fft_spectrum, plot_freq_histogram, validate_sine_vs_signal, validate_global_baseline
-
+import time
 plot_count = 0  # Global for debugging
 
 def process_file(file_path, save_as, window_length, filter_order):
@@ -35,39 +35,28 @@ def process_file(file_path, save_as, window_length, filter_order):
     tic = []
     global_baseline = None
     print("Processing file....")
-    print(">>> Empezando corrección")
+    print(">>> Corrigiendo")
+    start_time=time.time()
     for spectrum in input_map:
         original_spectra.append(spectrum)
         mzs, intensities = spectrum.get_peaks()
         rt = spectrum.getRT()
         rts.append(rt)
         tic.append(np.sum(intensities))
-        global_baseline = np.quantile(tic, 0.03)
-        corrected_spectrum = correct_oscillations(spectrum, window_length, filter_order, global_baseline)
+        
+    #global_baseline = np.quantile(tic, 0.03)#por qué hago quantile? calcula el percentil 3 porque si lo hago con min coge un pico demasiado pequeño
+    global_baseline=np.min(tic)
+    print(f"[DEBUG] global_baseline calculado: {global_baseline:.2e}")
+    
 
+    for spectrum in input_map:
+        corrected_spectrum = correct_oscillations(spectrum, window_length, filter_order, global_baseline)
         if corrected_spectrum is not None:
             corrected_spectra.append(corrected_spectrum)
+    end_time=time.time()
+    elapsed_time=end_time-start_time
     print("<<< Corrección terminada") 
-
-    '''# 1. Recolectar todas las intensidades corregidas
-    all_corrected_intensities = []
-   
-    for spectrum in corrected_spectra:
-       _, intensities = spectrum.get_peaks()
-       all_corrected_intensities.extend(intensities)
-
-    # 2. Calcular baseline actual de los espectros corregidos
-    corrected_baseline = np.quantile(all_corrected_intensities, 0.03)
-
-    # 3. Calcular cuánto hay que subir
-    offset = global_baseline - corrected_baseline
-    print(f"> Offset aplicado a todos los espectros: {offset:.2e}")
-
-    # 4. Aplicar desplazamiento a todos los espectros corregidos
-    for spectrum in corrected_spectra:
-        mzs, intensities = spectrum.get_peaks()
-        shifted_intensities = intensities + offset
-        spectrum.set_peaks((mzs, shifted_intensities))'''       
+    print(f"El programa ha tardado {elapsed_time:.2f} secs")#3mins más o menos     
 
     input_map.setSpectra(corrected_spectra)
     oms.MzMLFile().store(save_as, input_map)

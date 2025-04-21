@@ -7,7 +7,7 @@ from validation.signal_validator import validate_amplitudes, validate_baseline
 import matplotlib.pyplot as plt
 
 
-def correct_oscillations(spectrum, window_length, filter_order, global_baseline):
+def correct_oscillations(spectrum, window_length, filter_order):
     global plot_count
     
     #Obtengo los mzs e intensidades de la señal original
@@ -32,19 +32,22 @@ def correct_oscillations(spectrum, window_length, filter_order, global_baseline)
     #la frecuencia en esa intensidad por la amplitud para esa intensidad en ese mz
     #a esa señal creada le hago clip en el baseline
     #Inew = I_i - f(i) * A_i--> 
-    #Ii es la intensidad original (o suavizada). f€[0,1]
+    #Ii es la intensidad original (suavizada). f€[0,1]
     #f(I_i) = f(i) es la frecuencia local en el punto i.
     #Ai = amplitud interpolada en el punto i
     new_intensities = smoothed_intensities - local_freqs * interpolated_amplitudes
-    
-    # Evitar valores por debajo del baseline
-    baseline = np.quantile(smoothed_intensities, 0.03)
-    new_intensities = np.clip(new_intensities, baseline, None)
-    
+
     #5. Tengo las intensidades de la señal original y les resto las intensidades nuevas de "mi oscilación"
     corrected_intensities=smoothed_intensities-new_intensities
     
+    # Establezco el baseline (cogiendo la señal suavizada)
+    baseline=np.min(smoothed_intensities)
+    #baseline = np.quantile(smoothed_intensities, 0.03)
+    #corrected_baseline = np.quantile(corrected_intensities, 0.03)
+    #corrected_intensities = np.clip(corrected_intensities, 0, None)
     
+    #print(f"Corrected intensities: {corrected_intensities}")
+    corrected_intensities+=baseline
     
     #6. Guardo los cambios del espectro, fuerzo los parámetros para que no se pierda información y devuelvo el espectro corregido
     corrected_spectrum = oms.MSSpectrum()
@@ -60,7 +63,13 @@ def correct_oscillations(spectrum, window_length, filter_order, global_baseline)
     for meta in ["scan definition", "filter string", "Polarity"]:
         if spectrum.metaValueExists(meta):
             corrected_spectrum.setMetaValue(meta, spectrum.getMetaValue(meta))
-
+    
+    count=0
+    #if count<=10:
+        #print(f"[DEBUG] RT={spectrum.getRT():.2f} | baseline={baseline:.2e} | corrected_baseline={corrected_baseline:.2e} | offset={offset:.2e}")
+        #mzs, spectrum_intensities=corrected_spectrum.get_peaks()
+        #print(f"Intesities: {spectrum_intensities[count]}")
+        
     
     return corrected_spectrum
 
