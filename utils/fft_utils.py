@@ -28,14 +28,14 @@ def calculate_freq(intensities, sampling_interval=1.0, plot_spectrum=False):
 
 def estimate_local_freqs(intensities, mzs, window_size=21):
     """
-    Para cada punto i, toma una pequeña ventana de intensidades y sus m/z reales.
+    Para cada punto i, coge una pequeña ventana de intensidades y sus m/z reales.
     Calcula el sampling_interval solo para esa ventana.
     Aplica calculate_freq usando ese intervalo.
     Guarda la frecuencia dominante local f(i).
     
-    Args:
+    Args: intensities, mzs, window_size
         
-    Return:    
+    Return: array del tamaño de intensities con las frecuencias dominantes en cada ventana
         
     """
     half_w = window_size // 2
@@ -49,16 +49,16 @@ def estimate_local_freqs(intensities, mzs, window_size=21):
         window_intensities = intensities[start:end]
         window_mzs = mzs[start:end]
 
-        # Asegurar tamaño uniforme rellenando si hace falta
+        # Para asegurar que tienen el mismo tamaño (rellena si hace falta-np.pad--rellena)
         if len(window_intensities) < window_size:
             pad_len = window_size - len(window_intensities)
             window_intensities = np.pad(window_intensities, (0, pad_len), mode='constant')
             window_mzs = np.pad(window_mzs, (0, pad_len), mode='edge')  # repetir bordes
 
-        # Calcular intervalo de muestreo local
+        # Calculamos intervalo de muestreo 
         local_sampling_interval = np.mean(np.diff(window_mzs))
 
-        # Calcular frecuencia dominante en esa ventana
+        # Calculamos frecuencia dominante en esa ventana
         _, _, main_freq = calculate_freq(window_intensities, local_sampling_interval)
         local_freqs.append(main_freq)
 
